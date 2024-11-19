@@ -16,7 +16,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 package nodomain.freeyourgadget.gadgetbridge.service.devices.xiaomi;
 
-
 import static nodomain.freeyourgadget.gadgetbridge.activities.devicesettings.DeviceSettingsPreferenceConst.PREF_FORCE_CONNECTION_TYPE;
 
 import android.bluetooth.BluetoothAdapter;
@@ -96,19 +95,21 @@ public class XiaomiSupport extends AbstractDeviceSupport {
     private String cachedFirmwareVersion = null;
     private XiaomiConnectionSupport connectionSupport = null;
 
-    private final Map<Integer, AbstractXiaomiService> mServiceMap = new LinkedHashMap<Integer, AbstractXiaomiService>() {{
-        put(XiaomiAuthService.COMMAND_TYPE, authService);
-        put(XiaomiMusicService.COMMAND_TYPE, musicService);
-        put(XiaomiHealthService.COMMAND_TYPE, healthService);
-        put(XiaomiNotificationService.COMMAND_TYPE, notificationService);
-        put(XiaomiScheduleService.COMMAND_TYPE, scheduleService);
-        put(XiaomiWeatherService.COMMAND_TYPE, weatherService);
-        put(XiaomiSystemService.COMMAND_TYPE, systemService);
-        put(XiaomiCalendarService.COMMAND_TYPE, calendarService);
-        put(XiaomiWatchfaceService.COMMAND_TYPE, watchfaceService);
-        put(XiaomiDataUploadService.COMMAND_TYPE, dataUploadService);
-        put(XiaomiPhonebookService.COMMAND_TYPE, phonebookService);
-    }};
+    private final Map<Integer, AbstractXiaomiService> mServiceMap = new LinkedHashMap<Integer, AbstractXiaomiService>() {
+        {
+            put(XiaomiAuthService.COMMAND_TYPE, authService);
+            put(XiaomiMusicService.COMMAND_TYPE, musicService);
+            put(XiaomiHealthService.COMMAND_TYPE, healthService);
+            put(XiaomiNotificationService.COMMAND_TYPE, notificationService);
+            put(XiaomiScheduleService.COMMAND_TYPE, scheduleService);
+            put(XiaomiWeatherService.COMMAND_TYPE, weatherService);
+            put(XiaomiSystemService.COMMAND_TYPE, systemService);
+            put(XiaomiCalendarService.COMMAND_TYPE, calendarService);
+            put(XiaomiWatchfaceService.COMMAND_TYPE, watchfaceService);
+            put(XiaomiDataUploadService.COMMAND_TYPE, dataUploadService);
+            put(XiaomiPhonebookService.COMMAND_TYPE, phonebookService);
+        }
+    };
 
     @Override
     public boolean useAutoConnect() {
@@ -260,7 +261,7 @@ public class XiaomiSupport extends AbstractDeviceSupport {
 
     @Override
     public void onTestNewFunction() {
-        //sendCommand("test new function", 2, 29);
+        // sendCommand("test new function", 2, 29);
         parseAllActivityFilesFromStorage();
     }
 
@@ -411,7 +412,7 @@ public class XiaomiSupport extends AbstractDeviceSupport {
 
     @Override
     public void onSetContacts(ArrayList<? extends Contact> contacts) {
-        //noinspection unchecked
+        // noinspection unchecked
         phonebookService.setContacts((List<Contact>) contacts);
     }
 
@@ -443,8 +444,7 @@ public class XiaomiSupport extends AbstractDeviceSupport {
                 XiaomiProto.Command.newBuilder()
                         .setType(type)
                         .setSubtype(subtype)
-                        .build()
-        );
+                        .build());
     }
 
     public XiaomiAuthService getAuthService() {
@@ -506,12 +506,12 @@ public class XiaomiSupport extends AbstractDeviceSupport {
 
         GB.toast(getContext(), "Check notification for progress", Toast.LENGTH_LONG, GB.INFO);
         GB.updateTransferNotification("Parsing activity files", "...", true, 0, getContext());
-        final long[] lastNotificationUpdateTs = new long[]{System.currentTimeMillis()};
+        final long[] lastNotificationUpdateTs = new long[] { System.currentTimeMillis() };
 
         final Handler handler = new Handler(getContext().getMainLooper());
         new Thread(() -> {
             try {
-                int[] i = new int[]{0};
+                int[] i = new int[] { 0 };
                 for (final File activityFile : activityFiles) {
                     i[0]++;
 
@@ -524,8 +524,7 @@ public class XiaomiSupport extends AbstractDeviceSupport {
                             GB.updateTransferNotification(
                                     "Parsing activity files", "File " + i[0] + " of " + activityFiles.length,
                                     true,
-                                    (i[0] * 100) / activityFiles.length, getContext()
-                            );
+                                    (i[0] * 100) / activityFiles.length, getContext());
                             ;
                         });
                     }
@@ -576,7 +575,7 @@ public class XiaomiSupport extends AbstractDeviceSupport {
         evaluateGBDeviceEvent(new GBDeviceEventUpdatePreferences(featureKey, supported));
     }
 
-    private static final String[] EMOJI_SOURCE = new String[]{
+    private static final String[] EMOJI_SOURCE = new String[] {
             "\uD83D\uDE0D", // 😍
             "\uD83D\uDE18", // 😘
             "\uD83D\uDE02", // 😂
@@ -667,7 +666,7 @@ public class XiaomiSupport extends AbstractDeviceSupport {
             "\uD83D\uDE80", // 🚀
     };
 
-    private static final String[] EMOJI_TARGET = new String[]{
+    private static final String[] EMOJI_TARGET = new String[] {
             "ꀂ", // 😍
             "ꀃ", // 😘
             "ꀄ", // 😂

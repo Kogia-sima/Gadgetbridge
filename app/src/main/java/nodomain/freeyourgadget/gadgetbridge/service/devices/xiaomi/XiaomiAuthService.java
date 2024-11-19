@@ -62,14 +62,21 @@ import nodomain.freeyourgadget.gadgetbridge.util.GB;
 public class XiaomiAuthService extends AbstractXiaomiService {
     private static final Logger LOG = LoggerFactory.getLogger(XiaomiAuthService.class);
 
-
+    // コマンドタイプ一覧の定義
+    /** 認証コマンド */
     public static final int COMMAND_TYPE = 1;
 
+    // コマンドサブタイプ一覧の定義
+    /** 5: ユーザーIDを送信する */
     public static final int CMD_SEND_USERID = 5;
+    /** 26: ノンスを送信する */
     public static final int CMD_NONCE = 26;
+    /** 27: 認証を行う */
     public static final int CMD_AUTH = 27;
 
+    /** 暗号化の初期化状態 */
     private boolean encryptionInitialized = false;
+    /** 復号化のMACの確認を行うかどうかの設定 */
     private boolean checkDecryptionMac = true;
 
     private final byte[] secretKey = new byte[16];
@@ -87,15 +94,21 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         return encryptionInitialized;
     }
 
+    /** Auth Step 1 (デバイスにノンスを送信) */
     protected void startEncryptedHandshake() {
         encryptionInitialized = false;
 
+        // デバイスのシークレットキーを取得
         System.arraycopy(getSecretKey(getSupport().getDevice()), 0, secretKey, 0, 16);
+
+        // ランダムなバイト列を生成
         new SecureRandom().nextBytes(nonce);
 
+        // ノンスを送信
         getSupport().sendCommand("auth step 1", buildNonceCommand(nonce));
     }
 
+    /** Auth Step 1 (ユーザIDの送信) */
     protected void startClearTextHandshake() {
         final XiaomiProto.Auth auth = XiaomiProto.Auth.newBuilder()
                 .setUserId(getUserId(getSupport().getDevice()))
@@ -110,12 +123,14 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         getSupport().sendCommand("auth step 1", command);
     }
 
+    /** 設定値の再読み込み */
     @Override
     public void setContext(final Context context) {
         super.setContext(context);
         this.checkDecryptionMac = getCoordinator().checkDecryptionMac();
     }
 
+    /** 認証コマンドの受信後の処理 */
     @Override
     public void handleCommand(final XiaomiProto.Command cmd) {
         if (cmd.getType() != COMMAND_TYPE) {
@@ -123,6 +138,7 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         }
 
         switch (cmd.getSubtype()) {
+            // nonceの確認
             case CMD_NONCE: {
                 LOG.debug("Got watch nonce");
 
@@ -130,7 +146,8 @@ public class XiaomiAuthService extends AbstractXiaomiService {
                 final XiaomiProto.Command command = handleWatchNonce(cmd.getAuth().getWatchNonce());
 
                 if (command == null) {
-                    GB.toast(getSupport().getContext(), R.string.authentication_failed_check_key, Toast.LENGTH_LONG, GB.WARN);
+                    GB.toast(getSupport().getContext(), R.string.authentication_failed_check_key, Toast.LENGTH_LONG,
+                            GB.WARN);
                     LOG.error("handleWatchNonce returned null, disconnecting");
                     final GBDevice device = getSupport().getDevice();
 
@@ -148,17 +165,22 @@ public class XiaomiAuthService extends AbstractXiaomiService {
             case CMD_AUTH:
             case CMD_SEND_USERID: {
                 if (cmd.getSubtype() == CMD_AUTH || cmd.getAuth().getStatus() == 1) {
+                    // 認証に成功した場合
                     encryptionInitialized = cmd.getSubtype() == CMD_AUTH;
 
-                    LOG.info("Authenticated, further communications are {}", encryptionInitialized ? "encrypted" : "in plaintext");
+                    LOG.info("Authenticated, further communications are {}",
+                            encryptionInitialized ? "encrypted" : "in plaintext");
 
                     getSupport().getDevice().setState(GBDevice.State.INITIALIZED);
-                    getSupport().getDevice().sendDeviceUpdateIntent(getSupport().getContext(), GBDevice.DeviceUpdateSubject.DEVICE_STATE);
+                    getSupport().getDevice().sendDeviceUpdateIntent(getSupport().getContext(),
+                            GBDevice.DeviceUpdateSubject.DEVICE_STATE);
 
                     getSupport().onAuthSuccess();
                 } else {
+                    // 認証に失敗した場合
                     LOG.warn("Authentication failed, subtype={}, status={}", cmd.getSubtype(), cmd.getStatus());
-                    GB.toast(getSupport().getContext(), R.string.authentication_failed_check_key, Toast.LENGTH_LONG, GB.WARN);
+                    GB.toast(getSupport().getContext(), R.string.authentication_failed_check_key, Toast.LENGTH_LONG,
+                            GB.WARN);
 
                     final GBDevice device = getSupport().getDevice();
                     if (device != null) {
@@ -172,6 +194,7 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         }
     }
 
+    /** パケットの暗号化 */
     public byte[] encrypt(final byte[] arr, final int i) {
         final ByteBuffer packetNonce = ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
                 .put(encryptionNonce)
@@ -202,6 +225,7 @@ public class XiaomiAuthService extends AbstractXiaomiService {
     private XiaomiProto.Command handleWatchNonce(final XiaomiProto.WatchNonce watchNonce) {
         final byte[] step2hmac = computeAuthStep3Hmac(secretKey, nonce, watchNonce.getNonce().toByteArray());
 
+        // 受け取ったデータを鍵とノンスに分割
         System.arraycopy(step2hmac, 0, decryptionKey, 0, 16);
         System.arraycopy(step2hmac, 16, encryptionKey, 0, 16);
         System.arraycopy(step2hmac, 32, decryptionNonce, 0, 4);
@@ -212,12 +236,15 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         LOG.debug("decryptionNonce: {}", GB.hexdump(decryptionNonce));
         LOG.debug("encryptionNonce: {}", GB.hexdump(encryptionNonce));
 
-        final byte[] decryptionConfirmation = hmacSHA256(decryptionKey, ArrayUtils.addAll(watchNonce.getNonce().toByteArray(), nonce));
+        // ハッシュ値を比較し、データの内容が正しいか確認する
+        final byte[] decryptionConfirmation = hmacSHA256(decryptionKey,
+                ArrayUtils.addAll(watchNonce.getNonce().toByteArray(), nonce));
         if (!Arrays.equals(decryptionConfirmation, watchNonce.getHmac().toByteArray())) {
             LOG.warn("Watch hmac mismatch");
             return null;
         }
 
+        // 接続元の端末の認証情報を作成
         final XiaomiProto.AuthDeviceInfo authDeviceInfo = XiaomiProto.AuthDeviceInfo.newBuilder()
                 .setUnknown1(0) // TODO ?
                 .setPhoneApiLevel(Build.VERSION.SDK_INT)
@@ -227,8 +254,12 @@ public class XiaomiAuthService extends AbstractXiaomiService {
                 .setRegion(Locale.getDefault().getLanguage().substring(0, 2).toUpperCase(Locale.ROOT))
                 .build();
 
-        final byte[] encryptedNonces = hmacSHA256(encryptionKey, ArrayUtils.addAll(nonce, watchNonce.getNonce().toByteArray()));
+        // 暗号化
+        final byte[] encryptedNonces = hmacSHA256(encryptionKey,
+                ArrayUtils.addAll(nonce, watchNonce.getNonce().toByteArray()));
         final byte[] encryptedDeviceInfo = encrypt(authDeviceInfo.toByteArray(), 0);
+
+        // 認証コマンドを作成
         final XiaomiProto.AuthStep3 authStep3 = XiaomiProto.AuthStep3.newBuilder()
                 .setEncryptedNonces(ByteString.copyFrom(encryptedNonces))
                 .setEncryptedDeviceInfo(ByteString.copyFrom(encryptedDeviceInfo))
@@ -244,6 +275,7 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         return cmd.setAuth(auth.build()).build();
     }
 
+    /** nonceを埋め込んだコマンドを作成 */
     public static XiaomiProto.Command buildNonceCommand(final byte[] nonce) {
         final XiaomiProto.PhoneNonce.Builder phoneNonce = XiaomiProto.PhoneNonce.newBuilder();
         phoneNonce.setNonce(ByteString.copyFrom(nonce));
@@ -259,8 +291,8 @@ public class XiaomiAuthService extends AbstractXiaomiService {
     }
 
     public static byte[] computeAuthStep3Hmac(final byte[] secretKey,
-                                              final byte[] phoneNonce,
-                                              final byte[] watchNonce) {
+            final byte[] phoneNonce,
+            final byte[] watchNonce) {
         final byte[] miwearAuthBytes = "miwear-auth".getBytes();
 
         final Mac mac;
@@ -292,6 +324,7 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         return output;
     }
 
+    /** ユーザが設定した認証キーを取得 */
     protected static byte[] getSecretKey(final GBDevice device) {
         final byte[] authKeyBytes = new byte[16];
 
@@ -312,6 +345,7 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         return authKeyBytes;
     }
 
+    /** 認証キーを文字列として取得 */
     protected static String getUserId(final GBDevice device) {
         final SharedPreferences sharedPrefs = GBApplication.getDeviceSpecificSharedPrefs(device.getAddress());
 
@@ -333,8 +367,8 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         }
     }
 
-    public static byte[] encrypt(final byte[] key, final byte[] nonce, final byte[] payload) throws
-            CryptoException {
+    /** AES-32による暗号化 */
+    public static byte[] encrypt(final byte[] key, final byte[] nonce, final byte[] payload) throws CryptoException {
         final CCMBlockCipher cipher = createBlockCipher(true, new SecretKeySpec(key, "AES"), 32, nonce);
         final byte[] out = new byte[cipher.getOutputSize(payload.length)];
         final int outBytes = cipher.processBytes(payload, 0, payload.length, out, 0);
@@ -343,9 +377,9 @@ public class XiaomiAuthService extends AbstractXiaomiService {
     }
 
     public static byte[] decrypt(final byte[] key,
-                                 final byte[] nonce,
-                                 final byte[] encryptedPayload,
-                                 final boolean checkMac) throws CryptoException {
+            final byte[] nonce,
+            final byte[] encryptedPayload,
+            final boolean checkMac) throws CryptoException {
         final int macSizeBits = checkMac ? 32 : 0;
         final int actualEncryptedLength = checkMac ? encryptedPayload.length : encryptedPayload.length - 4;
         final CCMBlockCipher cipher = createBlockCipher(false, new SecretKeySpec(key, "AES"), macSizeBits, nonce);
@@ -355,13 +389,14 @@ public class XiaomiAuthService extends AbstractXiaomiService {
     }
 
     public static CCMBlockCipher createBlockCipher(final boolean forEncrypt,
-                                                   final SecretKey secretKey,
-                                                   final int macSizeBits,
-                                                   final byte[] nonce) {
+            final SecretKey secretKey,
+            final int macSizeBits,
+            final byte[] nonce) {
         final AESEngine aesFastEngine = new AESEngine();
         aesFastEngine.init(forEncrypt, new KeyParameter(secretKey.getEncoded()));
         final CCMBlockCipher blockCipher = new CCMBlockCipher(aesFastEngine);
-        blockCipher.init(forEncrypt, new AEADParameters(new KeyParameter(secretKey.getEncoded()), macSizeBits, nonce, null));
+        blockCipher.init(forEncrypt,
+                new AEADParameters(new KeyParameter(secretKey.getEncoded()), macSizeBits, nonce, null));
         return blockCipher;
     }
 
@@ -383,13 +418,13 @@ public class XiaomiAuthService extends AbstractXiaomiService {
         }
     }
 
-    public byte[] ctrCrypt(final int op, final byte[] key, final byte[] iv, final byte[] message) throws GeneralSecurityException {
+    public byte[] ctrCrypt(final int op, final byte[] key, final byte[] iv, final byte[] message)
+            throws GeneralSecurityException {
         final Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
         cipher.init(
                 op,
                 new SecretKeySpec(key, "AES"),
-                new IvParameterSpec(iv)
-        );
+                new IvParameterSpec(iv));
         return cipher.doFinal(message);
     }
 }

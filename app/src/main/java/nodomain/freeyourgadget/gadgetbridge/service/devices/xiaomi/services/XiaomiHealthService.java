@@ -127,13 +127,15 @@ public class XiaomiHealthService extends AbstractXiaomiService {
 
     @Override
     public void handleCommand(final XiaomiProto.Command cmd) {
+        // protobufのsubtypeフィールドの値を取得
         switch (cmd.getSubtype()) {
             case CMD_SET_USER_INFO:
                 LOG.debug("Got user info set ack, status={}", cmd.getStatus());
                 return;
             case CMD_ACTIVITY_FETCH_TODAY:
             case CMD_ACTIVITY_FETCH_PAST:
-                handleActivityFetchResponse(cmd.getSubtype(), cmd.getHealth().getActivityRequestFileIds().toByteArray());
+                handleActivityFetchResponse(cmd.getSubtype(),
+                        cmd.getHealth().getActivityRequestFileIds().toByteArray());
                 return;
             case CMD_CONFIG_SPO2_GET:
                 handleSpo2Config(cmd.getHealth().getSpo2());
@@ -264,7 +266,9 @@ public class XiaomiHealthService extends AbstractXiaomiService {
         final byte birthMonth = (byte) dateOfBirth.getMonthValue();
         final byte birthDay = (byte) dateOfBirth.getDayOfMonth();
 
-        final int genderInt = activityUser.getGender() != ActivityUser.GENDER_FEMALE ? GENDER_MALE : GENDER_FEMALE;  // TODO other gender?
+        final int genderInt = activityUser.getGender() != ActivityUser.GENDER_FEMALE ? GENDER_MALE : GENDER_FEMALE; // TODO
+                                                                                                                    // other
+                                                                                                                    // gender?
 
         final int age = activityUser.getAge();
         // Compute the approximate max heart rate from the user age
@@ -277,7 +281,8 @@ public class XiaomiHealthService extends AbstractXiaomiService {
         final XiaomiProto.UserInfo userInfo = XiaomiProto.UserInfo.newBuilder()
                 .setHeight(activityUser.getHeightCm())
                 .setWeight(activityUser.getWeightKg())
-                .setBirthday(Integer.parseInt(String.format(Locale.ROOT, "%04d%02d%02d", birthYear, birthMonth, birthDay)))
+                .setBirthday(
+                        Integer.parseInt(String.format(Locale.ROOT, "%04d%02d%02d", birthYear, birthMonth, birthDay)))
                 .setGender(genderInt)
                 .setMaxHeartRate(maxHeartRate)
                 .setGoalCalories(activityUser.getCaloriesBurntGoal())
@@ -296,8 +301,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_SET_USER_INFO)
                         .setHealth(health)
-                        .build()
-        );
+                        .build());
     }
 
     private void handleGoalNotificationConfig(final XiaomiProto.GoalNotification goalNotification) {
@@ -305,13 +309,15 @@ public class XiaomiHealthService extends AbstractXiaomiService {
 
         final GBDeviceEventUpdatePreferences eventUpdatePreferences = new GBDeviceEventUpdatePreferences()
                 .withPreference(XiaomiPreferences.FEAT_GOAL_NOTIFICATION, true)
-                .withPreference(DeviceSettingsPreferenceConst.PREF_USER_FITNESS_GOAL_NOTIFICATION, goalNotification.getEnabled());
+                .withPreference(DeviceSettingsPreferenceConst.PREF_USER_FITNESS_GOAL_NOTIFICATION,
+                        goalNotification.getEnabled());
 
         getSupport().evaluateGBDeviceEvent(eventUpdatePreferences);
     }
 
     public void sendGoalNotificationConfig() {
-        final boolean enabled = getDevicePrefs().getBoolean(DeviceSettingsPreferenceConst.PREF_USER_FITNESS_GOAL_NOTIFICATION, false);
+        final boolean enabled = getDevicePrefs()
+                .getBoolean(DeviceSettingsPreferenceConst.PREF_USER_FITNESS_GOAL_NOTIFICATION, false);
 
         LOG.debug("Setting goal notification enabled = {}", enabled);
 
@@ -329,8 +335,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_CONFIG_GOAL_NOTIFICATION_SET)
                         .setHealth(health)
-                        .build()
-        );
+                        .build());
     }
 
     private void handleGoalsConfig(final XiaomiProto.GoalsConfig goalsConfig) {
@@ -346,7 +351,8 @@ public class XiaomiHealthService extends AbstractXiaomiService {
             supportedGoals.add(goal.getId());
         }
 
-        final boolean secondaryGoalSupported = supportedGoals.contains(GOAL_STANDING_TIME) || supportedGoals.contains(GOAL_MOVING_TIME);
+        final boolean secondaryGoalSupported = supportedGoals.contains(GOAL_STANDING_TIME)
+                || supportedGoals.contains(GOAL_MOVING_TIME);
         final String secondaryValue = currentGoals.contains(GOAL_MOVING_TIME) ? "active_time" : "standing_time";
 
         final GBDeviceEventUpdatePreferences eventUpdatePreferences = new GBDeviceEventUpdatePreferences()
@@ -357,7 +363,8 @@ public class XiaomiHealthService extends AbstractXiaomiService {
     }
 
     public void sendGoalsConfig() {
-        final String goalSecondary = getDevicePrefs().getString(DeviceSettingsPreferenceConst.PREF_USER_FITNESS_GOAL_SECONDARY, "standing_time");
+        final String goalSecondary = getDevicePrefs()
+                .getString(DeviceSettingsPreferenceConst.PREF_USER_FITNESS_GOAL_SECONDARY, "standing_time");
 
         LOG.debug("Setting goals config = {}", goalSecondary);
 
@@ -389,8 +396,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_CONFIG_GOALS_SET)
                         .setHealth(health)
-                        .build()
-        );
+                        .build());
     }
 
     private void handleVitalityScore(final XiaomiProto.VitalityScore vitalityScore) {
@@ -399,14 +405,17 @@ public class XiaomiHealthService extends AbstractXiaomiService {
         final GBDeviceEventUpdatePreferences eventUpdatePreferences = new GBDeviceEventUpdatePreferences()
                 .withPreference(XiaomiPreferences.FEAT_VITALITY_SCORE, true)
                 .withPreference(DeviceSettingsPreferenceConst.PREF_VITALITY_SCORE_7_DAY, vitalityScore.getSevenDay())
-                .withPreference(DeviceSettingsPreferenceConst.PREF_VITALITY_SCORE_DAILY, vitalityScore.getDailyProgress());
+                .withPreference(DeviceSettingsPreferenceConst.PREF_VITALITY_SCORE_DAILY,
+                        vitalityScore.getDailyProgress());
 
         getSupport().evaluateGBDeviceEvent(eventUpdatePreferences);
     }
 
     public void sendVitalityScoreConfig() {
-        final boolean prefSevenDay = getDevicePrefs().getBoolean(DeviceSettingsPreferenceConst.PREF_VITALITY_SCORE_7_DAY, false);
-        final boolean prefDaily = getDevicePrefs().getBoolean(DeviceSettingsPreferenceConst.PREF_VITALITY_SCORE_DAILY, false);
+        final boolean prefSevenDay = getDevicePrefs()
+                .getBoolean(DeviceSettingsPreferenceConst.PREF_VITALITY_SCORE_7_DAY, false);
+        final boolean prefDaily = getDevicePrefs().getBoolean(DeviceSettingsPreferenceConst.PREF_VITALITY_SCORE_DAILY,
+                false);
 
         LOG.debug("Setting vitality score config, 7day={}, daily={}", prefSevenDay, prefDaily);
 
@@ -425,8 +434,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_CONFIG_VITALITY_SCORE_SET)
                         .setHealth(health)
-                        .build()
-        );
+                        .build());
     }
 
     private void handleSpo2Config(final XiaomiProto.SpO2 spo2) {
@@ -437,8 +445,9 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                 .withPreference(DeviceSettingsPreferenceConst.PREF_SPO2_ALL_DAY_MONITORING, spo2.getAllDayTracking())
                 .withPreference(
                         DeviceSettingsPreferenceConst.PREF_SPO2_LOW_ALERT_THRESHOLD,
-                        String.valueOf(spo2.getAlarmLow().getAlarmLowEnabled() ? spo2.getAlarmLow().getAlarmLowThreshold() : 0)
-                );
+                        String.valueOf(
+                                spo2.getAlarmLow().getAlarmLowEnabled() ? spo2.getAlarmLow().getAlarmLowThreshold()
+                                        : 0));
 
         getSupport().evaluateGBDeviceEvent(eventUpdatePreferences);
     }
@@ -447,7 +456,8 @@ public class XiaomiHealthService extends AbstractXiaomiService {
         LOG.debug("Set SpO2 config");
 
         final Prefs prefs = getDevicePrefs();
-        final boolean allDayMonitoring = prefs.getBoolean(DeviceSettingsPreferenceConst.PREF_SPO2_ALL_DAY_MONITORING, false);
+        final boolean allDayMonitoring = prefs.getBoolean(DeviceSettingsPreferenceConst.PREF_SPO2_ALL_DAY_MONITORING,
+                false);
         final int lowAlertThreshold = prefs.getInt(DeviceSettingsPreferenceConst.PREF_SPO2_LOW_ALERT_THRESHOLD, 0);
 
         final XiaomiProto.Spo2AlarmLow.Builder spo2alarmLowBuilder = XiaomiProto.Spo2AlarmLow.newBuilder()
@@ -468,8 +478,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_CONFIG_SPO2_SET)
                         .setHealth(XiaomiProto.Health.newBuilder().setSpo2(spo2))
-                        .build()
-        );
+                        .build());
     }
 
     private void handleHeartRateConfig(final XiaomiProto.HeartRate heartRate) {
@@ -477,26 +486,32 @@ public class XiaomiHealthService extends AbstractXiaomiService {
 
         final GBDeviceEventUpdatePreferences eventUpdatePreferences = new GBDeviceEventUpdatePreferences();
         if (heartRate.getDisabled()) {
-            eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_MEASUREMENT_INTERVAL, "0");
+            eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_MEASUREMENT_INTERVAL,
+                    "0");
         } else if (heartRate.getInterval() == 0) {
             // smart
-            eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_MEASUREMENT_INTERVAL, "-1");
+            eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_MEASUREMENT_INTERVAL,
+                    "-1");
         } else {
-            eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_MEASUREMENT_INTERVAL, String.valueOf(heartRate.getInterval()));
+            eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_MEASUREMENT_INTERVAL,
+                    String.valueOf(heartRate.getInterval()));
         }
 
-        eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_USE_FOR_SLEEP_DETECTION, heartRate.getAdvancedMonitoring().getEnabled());
-        eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_SLEEP_BREATHING_QUALITY_MONITORING, heartRate.getBreathingScore() == 1);
+        eventUpdatePreferences.withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_USE_FOR_SLEEP_DETECTION,
+                heartRate.getAdvancedMonitoring().getEnabled());
+        eventUpdatePreferences.withPreference(
+                DeviceSettingsPreferenceConst.PREF_HEARTRATE_SLEEP_BREATHING_QUALITY_MONITORING,
+                heartRate.getBreathingScore() == 1);
 
         eventUpdatePreferences.withPreference(
                 DeviceSettingsPreferenceConst.PREF_HEARTRATE_ALERT_HIGH_THRESHOLD,
-                String.valueOf(heartRate.getAlarmHighEnabled() ? heartRate.getAlarmHighThreshold() : 0)
-        );
+                String.valueOf(heartRate.getAlarmHighEnabled() ? heartRate.getAlarmHighThreshold() : 0));
 
         eventUpdatePreferences.withPreference(
                 DeviceSettingsPreferenceConst.PREF_HEARTRATE_ALERT_LOW_THRESHOLD,
-                String.valueOf(heartRate.getHeartRateAlarmLow().getAlarmLowEnabled() ? heartRate.getHeartRateAlarmLow().getAlarmLowThreshold() : 0)
-        );
+                String.valueOf(heartRate.getHeartRateAlarmLow().getAlarmLowEnabled()
+                        ? heartRate.getHeartRateAlarmLow().getAlarmLowThreshold()
+                        : 0));
 
         getSupport().evaluateGBDeviceEvent(eventUpdatePreferences);
     }
@@ -504,8 +519,10 @@ public class XiaomiHealthService extends AbstractXiaomiService {
     public void setHeartRateConfig() {
         final Prefs prefs = getDevicePrefs();
 
-        final boolean sleepDetection = prefs.getBoolean(DeviceSettingsPreferenceConst.PREF_HEARTRATE_USE_FOR_SLEEP_DETECTION, false);
-        final boolean sleepBreathingQuality = prefs.getBoolean(DeviceSettingsPreferenceConst.PREF_HEARTRATE_SLEEP_BREATHING_QUALITY_MONITORING, false);
+        final boolean sleepDetection = prefs
+                .getBoolean(DeviceSettingsPreferenceConst.PREF_HEARTRATE_USE_FOR_SLEEP_DETECTION, false);
+        final boolean sleepBreathingQuality = prefs
+                .getBoolean(DeviceSettingsPreferenceConst.PREF_HEARTRATE_SLEEP_BREATHING_QUALITY_MONITORING, false);
         final int intervalSeconds = prefs.getInt(DeviceSettingsPreferenceConst.PREF_HEARTRATE_MEASUREMENT_INTERVAL, 0);
         final int alertHigh = prefs.getInt(DeviceSettingsPreferenceConst.PREF_HEARTRATE_ALERT_HIGH_THRESHOLD, 0);
         final int alertLow = prefs.getInt(DeviceSettingsPreferenceConst.PREF_HEARTRATE_ALERT_LOW_THRESHOLD, 0);
@@ -524,8 +541,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                 sleepBreathingQuality,
                 intervalSeconds,
                 alertHigh,
-                alertLow
-        );
+                alertLow);
 
         final XiaomiProto.HeartRate.Builder heartRate = XiaomiProto.HeartRate.newBuilder()
                 .setDisabled(intervalSeconds == 0)
@@ -546,8 +562,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_CONFIG_HEART_RATE_SET)
                         .setHealth(XiaomiProto.Health.newBuilder().setHeartRate(heartRate))
-                        .build()
-        );
+                        .build());
     }
 
     private void handleStandingReminderConfig(final XiaomiProto.StandingReminder standingReminder) {
@@ -596,8 +611,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_CONFIG_STANDING_REMINDER_SET)
                         .setHealth(XiaomiProto.Health.newBuilder().setStandingReminder(standingReminder))
-                        .build()
-        );
+                        .build());
     }
 
     private void handleStressConfig(final XiaomiProto.Stress stress) {
@@ -605,8 +619,10 @@ public class XiaomiHealthService extends AbstractXiaomiService {
 
         final GBDeviceEventUpdatePreferences eventUpdatePreferences = new GBDeviceEventUpdatePreferences()
                 .withPreference(XiaomiPreferences.FEAT_STRESS, true)
-                .withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_STRESS_MONITORING, stress.getAllDayTracking())
-                .withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_STRESS_RELAXATION_REMINDER, stress.getRelaxReminder().getEnabled());
+                .withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_STRESS_MONITORING,
+                        stress.getAllDayTracking())
+                .withPreference(DeviceSettingsPreferenceConst.PREF_HEARTRATE_STRESS_RELAXATION_REMINDER,
+                        stress.getRelaxReminder().getEnabled());
 
         getSupport().evaluateGBDeviceEvent(eventUpdatePreferences);
     }
@@ -616,7 +632,8 @@ public class XiaomiHealthService extends AbstractXiaomiService {
 
         final Prefs prefs = getDevicePrefs();
         final boolean enabled = prefs.getBoolean(DeviceSettingsPreferenceConst.PREF_HEARTRATE_STRESS_MONITORING, false);
-        final boolean relaxReminder = prefs.getBoolean(DeviceSettingsPreferenceConst.PREF_HEARTRATE_STRESS_RELAXATION_REMINDER, false);
+        final boolean relaxReminder = prefs
+                .getBoolean(DeviceSettingsPreferenceConst.PREF_HEARTRATE_STRESS_RELAXATION_REMINDER, false);
 
         final XiaomiProto.Stress.Builder stress = XiaomiProto.Stress.newBuilder()
                 .setAllDayTracking(enabled)
@@ -628,8 +645,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_CONFIG_STRESS_SET)
                         .setHealth(XiaomiProto.Health.newBuilder().setStress(stress))
-                        .build()
-        );
+                        .build());
     }
 
     private void handleWorkoutOpen(final XiaomiProto.WorkoutOpenWatch workoutOpenWatch) {
@@ -638,12 +654,12 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                 workoutOpenWatch.getSport(),
                 workoutStarted,
                 gpsStarted,
-                gpsFixAcquired
-        );
+                gpsFixAcquired);
 
         workoutStarted = false;
 
-        final boolean sendGpsToBand = getDevicePrefs().getBoolean(DeviceSettingsPreferenceConst.PREF_WORKOUT_SEND_GPS_TO_BAND, false);
+        final boolean sendGpsToBand = getDevicePrefs()
+                .getBoolean(DeviceSettingsPreferenceConst.PREF_WORKOUT_SEND_GPS_TO_BAND, false);
         if (!sendGpsToBand) {
             getSupport().sendCommand(
                     "send location disabled",
@@ -654,17 +670,16 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                                     XiaomiProto.WorkoutOpenReply.newBuilder()
                                             .setUnknown1(3)
                                             .setUnknown2(2)
-                                            .setUnknown3(10)
-                            ))
-                            .build()
-            );
+                                            .setUnknown3(10)))
+                            .build());
             return;
         }
 
         if (!gpsStarted) {
             gpsStarted = true;
             gpsFixAcquired = false;
-            GBLocationService.start(getSupport().getContext(), getSupport().getDevice(), GBLocationProviderType.GPS, 1000);
+            GBLocationService.start(getSupport().getContext(), getSupport().getDevice(), GBLocationProviderType.GPS,
+                    1000);
         }
 
         gpsTimeoutHandler.removeCallbacksAndMessages(null);
@@ -680,14 +695,16 @@ public class XiaomiHealthService extends AbstractXiaomiService {
     private void handleWorkoutStatus(final XiaomiProto.WorkoutStatusWatch workoutStatus) {
         LOG.debug("Got workout status: {}", workoutStatus.getStatus());
 
-        final boolean startOnPhone = getDevicePrefs().getBoolean(DeviceSettingsPreferenceConst.PREF_WORKOUT_START_ON_PHONE, false);
+        final boolean startOnPhone = getDevicePrefs()
+                .getBoolean(DeviceSettingsPreferenceConst.PREF_WORKOUT_START_ON_PHONE, false);
 
         switch (workoutStatus.getStatus()) {
             case WORKOUT_STARTED:
                 workoutStarted = true;
                 gpsTimeoutHandler.removeCallbacksAndMessages(null);
                 if (startOnPhone) {
-                    OpenTracksController.startRecording(getSupport().getContext(), sportToActivityKind(workoutStatus.getSport()));
+                    OpenTracksController.startRecording(getSupport().getContext(),
+                            sportToActivityKind(workoutStatus.getSport()));
                 }
                 break;
             case WORKOUT_RESUMED:
@@ -716,10 +733,8 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                                     XiaomiProto.WorkoutOpenReply.newBuilder()
                                             .setUnknown1(0)
                                             .setUnknown2(2)
-                                            .setUnknown3(2)
-                            ))
-                            .build()
-            );
+                                            .setUnknown3(2)))
+                            .build());
         }
 
         if (workoutStarted) {
@@ -732,13 +747,16 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                     .setSpeed(location.getSpeed())
                     .setBearing(location.getBearing());
 
-            // FIXME: Check the value for these during actual workouts, but it seems to work without them
-            //if (location.hasAccuracy() && location.getAccuracy() != 100) {
-            //    workoutLocation.setHorizontalAccuracy(location.getAccuracy());
-            //}
-            //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && location.hasVerticalAccuracy() && location.getVerticalAccuracyMeters() != 100) {
-            //    workoutLocation.setVerticalAccuracy(location.getVerticalAccuracyMeters());
-            //}
+            // FIXME: Check the value for these during actual workouts, but it seems to work
+            // without them
+            // if (location.hasAccuracy() && location.getAccuracy() != 100) {
+            // workoutLocation.setHorizontalAccuracy(location.getAccuracy());
+            // }
+            // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            // location.hasVerticalAccuracy() && location.getVerticalAccuracyMeters() !=
+            // 100) {
+            // workoutLocation.setVerticalAccuracy(location.getVerticalAccuracyMeters());
+            // }
 
             getSupport().sendCommand(
                     "send gps location",
@@ -746,8 +764,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                             .setType(COMMAND_TYPE)
                             .setSubtype(CMD_WORKOUT_LOCATION)
                             .setHealth(XiaomiProto.Health.newBuilder().setWorkoutLocation(workoutLocation))
-                            .build()
-            );
+                            .build());
         }
     }
 
@@ -788,10 +805,8 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setSubtype(CMD_ACTIVITY_FETCH_TODAY)
                         .setHealth(XiaomiProto.Health.newBuilder().setActivitySyncRequestToday(
                                 // TODO official app sends 0, but sometimes 1?
-                                XiaomiProto.ActivitySyncRequestToday.newBuilder().setUnknown1(0)
-                        ))
-                        .build()
-        );
+                                XiaomiProto.ActivitySyncRequestToday.newBuilder().setUnknown1(0)))
+                        .build());
     }
 
     private void fetchRecordedDataPast() {
@@ -800,8 +815,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                 XiaomiProto.Command.newBuilder()
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_ACTIVITY_FETCH_PAST)
-                        .build()
-        );
+                        .build());
     }
 
     public void requestRecordedData(final XiaomiActivityFileId fileId) {
@@ -811,10 +825,8 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_ACTIVITY_FETCH_REQUEST)
                         .setHealth(XiaomiProto.Health.newBuilder().setActivityRequestFileIds(
-                                ByteString.copyFrom(fileId.toBytes())
-                        ))
-                        .build()
-        );
+                                ByteString.copyFrom(fileId.toBytes())))
+                        .build());
     }
 
     public void ackRecordedData(final XiaomiActivityFileId fileId) {
@@ -824,15 +836,14 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_ACTIVITY_FETCH_ACK)
                         .setHealth(XiaomiProto.Health.newBuilder().setActivitySyncAckFileIds(
-                                ByteString.copyFrom(fileId.toBytes())
-                        ))
-                        .build()
-        );
+                                ByteString.copyFrom(fileId.toBytes())))
+                        .build());
     }
 
     public void handleActivityFetchResponse(final int subtype, final byte[] recordIds) {
         if ((recordIds.length % 7) != 0) {
-            LOG.warn("recordIds {} length = {}, not a multiple of 7, can't parse", GB.hexdump(recordIds), recordIds.length);
+            LOG.warn("recordIds {} length = {}, not a multiple of 7, can't parse", GB.hexdump(recordIds),
+                    recordIds.length);
             return;
         }
 
@@ -869,8 +880,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                 XiaomiProto.Command.newBuilder()
                         .setType(COMMAND_TYPE)
                         .setSubtype(CMD_REALTIME_STATS_START)
-                        .build()
-        );
+                        .build());
     }
 
     public void enableRealtimeStats(final boolean enable) {
@@ -890,10 +900,10 @@ public class XiaomiHealthService extends AbstractXiaomiService {
                 XiaomiProto.Command.newBuilder()
                         .setType(COMMAND_TYPE)
                         .setSubtype(enable ? CMD_REALTIME_STATS_START : CMD_REALTIME_STATS_STOP)
-                        .build()
-        );
+                        .build());
     }
 
+    /** REALTIME_STATS_EVENTを受信したときの処理 */
     private void handleRealtimeStats(final XiaomiProto.RealTimeStats realTimeStats) {
         LOG.debug("Got realtime stats");
 
@@ -904,27 +914,35 @@ public class XiaomiHealthService extends AbstractXiaomiService {
         }
 
         if (realtimeOneShot) {
+            // 心拍数が10以下の場合は無視
             if (realTimeStats.getHeartRate() <= 10) {
                 return;
             }
             enableRealtimeStats(false);
         }
 
+        // 累積歩数を更新
         if (previousSteps == -1) {
             previousSteps = realTimeStats.getSteps();
         }
 
         final XiaomiActivitySample sample;
         try (final DBHandler dbHandler = GBApplication.acquireDB()) {
+            // ?
             final DaoSession session = dbHandler.getDaoSession();
 
+            // 接続中のデバイス
             final GBDevice gbDevice = getSupport().getDevice();
             final Device device = DBHelper.getDevice(gbDevice, session);
+            // ユーザー情報を取得
             final User user = DBHelper.getUser(session);
+            // 現在時刻を取得
             final int ts = (int) (System.currentTimeMillis() / 1000);
+            // データの受け渡し用のキューを作成
             final XiaomiSampleProvider provider = new XiaomiSampleProvider(gbDevice, session);
             sample = provider.createActivitySample();
 
+            // リアルタイムデータを表示
             sample.setDeviceId(device.getId());
             sample.setUserId(user.getId());
             sample.setTimestamp(ts);
@@ -937,6 +955,7 @@ public class XiaomiHealthService extends AbstractXiaomiService {
             return;
         }
 
+        // 歩数データの更新
         previousSteps = realTimeStats.getSteps();
 
         final Intent intent = new Intent(DeviceService.ACTION_REALTIME_SAMPLES)

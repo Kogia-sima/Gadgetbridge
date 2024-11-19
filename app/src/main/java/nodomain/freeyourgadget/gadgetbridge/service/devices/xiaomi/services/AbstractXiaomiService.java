@@ -44,8 +44,9 @@ public abstract class AbstractXiaomiService {
 
     /**
      * Handle a preference change.
+     * 
      * @param config the preference key
-     * @param prefs the device preferences
+     * @param prefs  the device preferences
      * @return true if the preference was handled, false otherwise
      */
     public boolean onSendConfiguration(final String config, final Prefs prefs) {
@@ -60,9 +61,11 @@ public abstract class AbstractXiaomiService {
         return (XiaomiCoordinator) getSupport().getDevice().getDeviceCoordinator();
     }
 
+    /** デバイスの設定情報を取得 */
     protected DevicePrefs getDevicePrefs() {
         return GBApplication.getDevicePrefs(getSupport().getDevice());
     }
 
-    public void onDisconnect() {}
+    public void onDisconnect() {
+    }
 }
